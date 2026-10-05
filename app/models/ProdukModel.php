@@ -1,9 +1,5 @@
 <?php
-/**
- * Model: ProdukModel
- * Bertanggung jawab melakukan query database (CRUD) untuk tabel produk_umkm
- */
-
+// Model: ProdukModel.php (Pengolah Query CRUD)
 require_once __DIR__ . '/../../config/database.php';
 
 class ProdukModel {
@@ -13,116 +9,39 @@ class ProdukModel {
         $this->db = Database::connect();
     }
 
-    /**
-     * Menampilkan semua data produk (dengan dukungan pencarian & filter kategori)
-     */
-    public function getAll($keyword = '', $kategori = '') {
-        $sql = "SELECT * FROM produk_umkm WHERE 1=1";
-        $params = [];
-
+    // Read: Mengambil semua data (dengan pencarian)
+    public function getAll($keyword = '') {
         if (!empty($keyword)) {
-            $sql .= " AND (nama_produk LIKE :keyword OR nama_pemilik LIKE :keyword OR lokasi_umkm LIKE :keyword)";
-            $params[':keyword'] = "%" . $keyword . "%";
+            $stmt = $this->db->prepare("SELECT * FROM produk_umkm WHERE nama_produk LIKE ? OR nama_pemilik LIKE ? ORDER BY id DESC");
+            $stmt->execute(["%$keyword%", "%$keyword%"]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
-
-        if (!empty($kategori)) {
-            $sql .= " AND kategori_produk = :kategori";
-            $params[':kategori'] = $kategori;
-        }
-
-        $sql .= " ORDER BY id DESC";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll();
+        $stmt = $this->db->query("SELECT * FROM produk_umkm ORDER BY id DESC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Mengambil 1 data produk berdasarkan ID
-     */
+    // Read 1 Data
     public function getById($id) {
-        $stmt = $this->db->prepare("SELECT * FROM produk_umkm WHERE id = :id");
-        $stmt->execute([':id' => $id]);
-        return $stmt->fetch();
+        $stmt = $this->db->prepare("SELECT * FROM produk_umkm WHERE id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Menambah data produk baru (Create)
-     */
+    // Create: Tambah Data Baru
     public function create($data) {
-        $sql = "INSERT INTO produk_umkm (nama_produk, nama_pemilik, kategori_produk, harga, nomor_whatsapp, lokasi_umkm, deskripsi, status_stok) 
-                VALUES (:nama_produk, :nama_pemilik, :kategori_produk, :harga, :nomor_whatsapp, :lokasi_umkm, :deskripsi, :status_stok)";
-        
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([
-            ':nama_produk'    => $data['nama_produk'],
-            ':nama_pemilik'   => $data['nama_pemilik'],
-            ':kategori_produk'=> $data['kategori_produk'],
-            ':harga'          => $data['harga'],
-            ':nomor_whatsapp' => $data['nomor_whatsapp'],
-            ':lokasi_umkm'    => $data['lokasi_umkm'],
-            ':deskripsi'      => $data['deskripsi'],
-            ':status_stok'    => $data['status_stok']
-        ]);
+        $stmt = $this->db->prepare("INSERT INTO produk_umkm (nama_produk, nama_pemilik, kategori_produk, harga, nomor_whatsapp) VALUES (?, ?, ?, ?, ?)");
+        return $stmt->execute([$data['nama_produk'], $data['nama_pemilik'], $data['kategori_produk'], $data['harga'], $data['nomor_whatsapp']]);
     }
 
-    /**
-     * Mengubah data produk yang sudah ada (Update)
-     */
+    // Update: Ubah Data
     public function update($id, $data) {
-        $sql = "UPDATE produk_umkm SET 
-                    nama_produk = :nama_produk,
-                    nama_pemilik = :nama_pemilik,
-                    kategori_produk = :kategori_produk,
-                    harga = :harga,
-                    nomor_whatsapp = :nomor_whatsapp,
-                    lokasi_umkm = :lokasi_umkm,
-                    deskripsi = :deskripsi,
-                    status_stok = :status_stok
-                WHERE id = :id";
-
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([
-            ':id'             => $id,
-            ':nama_produk'    => $data['nama_produk'],
-            ':nama_pemilik'   => $data['nama_pemilik'],
-            ':kategori_produk'=> $data['kategori_produk'],
-            ':harga'          => $data['harga'],
-            ':nomor_whatsapp' => $data['nomor_whatsapp'],
-            ':lokasi_umkm'    => $data['lokasi_umkm'],
-            ':deskripsi'      => $data['deskripsi'],
-            ':status_stok'    => $data['status_stok']
-        ]);
+        $stmt = $this->db->prepare("UPDATE produk_umkm SET nama_produk=?, nama_pemilik=?, kategori_produk=?, harga=?, nomor_whatsapp=? WHERE id=?");
+        return $stmt->execute([$data['nama_produk'], $data['nama_pemilik'], $data['kategori_produk'], $data['harga'], $data['nomor_whatsapp'], $id]);
     }
 
-    /**
-     * Menghapus data produk berdasarkan ID (Delete)
-     */
+    // Delete: Hapus Data
     public function delete($id) {
-        $stmt = $this->db->prepare("DELETE FROM produk_umkm WHERE id = :id");
-        return $stmt->execute([':id' => $id]);
-    }
-
-    /**
-     * Mengambil daftar kategori unik untuk opsi filter dropdown
-     */
-    public function getKategoriList() {
-        $stmt = $this->db->query("SELECT DISTINCT kategori_produk FROM produk_umkm ORDER BY kategori_produk ASC");
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
-    }
-
-    /**
-     * Mengambil statistik ringkas untuk ringkasan katalog
-     */
-    public function getStatistik() {
-        $totalProduk = $this->db->query("SELECT COUNT(*) FROM produk_umkm")->fetchColumn();
-        $totalUmkm = $this->db->query("SELECT COUNT(DISTINCT nama_pemilik) FROM produk_umkm")->fetchColumn();
-        $rataHarga = $this->db->query("SELECT AVG(harga) FROM produk_umkm")->fetchColumn();
-
-        return [
-            'total_produk' => $totalProduk ?: 0,
-            'total_umkm'   => $totalUmkm ?: 0,
-            'rata_harga'   => $rataHarga ?: 0
-        ];
+        $stmt = $this->db->prepare("DELETE FROM produk_umkm WHERE id = ?");
+        return $stmt->execute([$id]);
     }
 }
