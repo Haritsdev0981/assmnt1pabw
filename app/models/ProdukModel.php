@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/../../config/database.php/';
+require_once __DIR__ . '/../../config/database.php';
 
-class ProdukModels {
+class ProdukModel {
 
     private $db;
 
@@ -11,7 +11,7 @@ class ProdukModels {
 
     public function getAll($keyword = ''){
         if(!empty($keyword)){
-            $stmt = $this->db->prepare("SELECT * FROM produk_umkm WHERE nama_produk LIKE ? OR nama_pemilik LIKE ? ORDER BY id DECS");
+            $stmt = $this->db->prepare("SELECT * FROM produk_umkm WHERE nama_produk LIKE ? OR nama_pemilik LIKE ? ORDER BY id DESC");
             $stmt->execute(["%$keyword%", "%$keyword%"]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
